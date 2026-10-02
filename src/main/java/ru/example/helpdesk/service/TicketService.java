@@ -85,7 +85,6 @@ public class TicketService {
                     ps.setLong(1, ticketId);
 
                     try (ResultSet rs = ps.executeQuery()) {
-
                         if (!rs.next()) {
                             throw new IllegalArgumentException(
                                     "Заявка не найдена"
@@ -130,7 +129,8 @@ public class TicketService {
 
         } catch (SQLException e) {
             throw new RuntimeException(
-                    "Ошибка изменения статуса", e
+                    "Ошибка изменения статуса",
+                    e
             );
         }
     }
@@ -140,7 +140,6 @@ public class TicketService {
             TicketStatus newStatus
     ) {
         boolean allowed = switch (oldStatus) {
-
             case NEW ->
                     newStatus == TicketStatus.IN_PROGRESS
                             || newStatus == TicketStatus.CANCELLED;
@@ -160,6 +159,70 @@ public class TicketService {
             throw new IllegalStateException(
                     "Недопустимый переход: "
                             + oldStatus + " -> " + newStatus
+            );
+        }
+    }
+
+    public void assignTicket(
+            long ticketId,
+            long supportAgentId
+    ) {
+        String userSql = """
+                SELECT role
+                FROM users
+                WHERE id = ?
+                """;
+
+        String updateSql = """
+                UPDATE tickets
+                SET assignee_id = ?,
+                    status = 'IN_PROGRESS',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+
+        try (Connection connection = DatabaseConfig.getConnection()) {
+
+            try (PreparedStatement ps =
+                         connection.prepareStatement(userSql)) {
+
+                ps.setLong(1, supportAgentId);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new IllegalArgumentException(
+                                "Пользователь не найден"
+                        );
+                    }
+
+                    String role = rs.getString("role");
+
+                    if (!"SUPPORT_AGENT".equals(role)) {
+                        throw new IllegalArgumentException(
+                                "Пользователь не является сотрудником поддержки"
+                        );
+                    }
+                }
+            }
+
+            try (PreparedStatement ps =
+                         connection.prepareStatement(updateSql)) {
+
+                ps.setLong(1, supportAgentId);
+                ps.setLong(2, ticketId);
+
+                int updated = ps.executeUpdate();
+
+                if (updated == 0) {
+                    throw new IllegalArgumentException(
+                            "Заявка не найдена"
+                    );
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(
+                    "Ошибка назначения заявки", e
             );
         }
     }
