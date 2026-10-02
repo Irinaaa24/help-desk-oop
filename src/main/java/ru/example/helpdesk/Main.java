@@ -1,31 +1,29 @@
 package ru.example.helpdesk;
 
-import ru.example.helpdesk.model.Category;
-import ru.example.helpdesk.model.Department;
-import ru.example.helpdesk.repository.CategoryRepository;
-import ru.example.helpdesk.repository.DepartmentRepository;
-import ru.example.helpdesk.repository.jdbc.JdbcCategoryRepository;
-import ru.example.helpdesk.repository.jdbc.JdbcDepartmentRepository;
+import ru.example.helpdesk.model.Ticket;
+import ru.example.helpdesk.model.TicketPriority;
+import ru.example.helpdesk.repository.TicketRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcTicketRepository;
+import ru.example.helpdesk.service.TicketService;
 
 public class Main {
     public static void main(String[] args) {
 
-        CategoryRepository categoryRepository =
-                new JdbcCategoryRepository();
+        TicketRepository ticketRepository =
+                new JdbcTicketRepository();
 
-        DepartmentRepository departmentRepository =
-                new JdbcDepartmentRepository();
+        TicketService ticketService =
+                new TicketService(ticketRepository);
 
-        System.out.println("=== КАТЕГОРИИ ===");
+        Ticket ticket = ticketService.createTicket(
+                "Проверка TicketService",
+                "Проверка бизнес-логики",
+                TicketPriority.HIGH,
+                1L,
+                1L
+        );
 
-        for (Category category : categoryRepository.findAllCategories()) {
-            System.out.println(category);
-        }
-
-        System.out.println("\n=== ОТДЕЛЫ ===");
-
-        for (Department department : departmentRepository.findAllDepartments()) {
-            System.out.println(department);
-        }
+        System.out.println("Создана заявка:");
+        System.out.println(ticket);
     }
 }
