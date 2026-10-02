@@ -1,4 +1,4 @@
-package helpdesk;
+package ru.example.helpdesk.model;
 public class Administrator extends User {
     public Administrator(long id, String name, String email) {
         super(id, name, email);

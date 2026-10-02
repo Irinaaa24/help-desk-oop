@@ -1,4 +1,4 @@
-package helpdesk;
+package ru.example.helpdesk.model;
 public abstract class User {
     private long id;
     private String name;

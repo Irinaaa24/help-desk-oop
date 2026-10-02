@@ -1,4 +1,4 @@
-package helpdesk;
+package ru.example.helpdesk.model;
 public class Device {
     private String type;
     private String model;

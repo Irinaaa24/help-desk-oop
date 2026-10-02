@@ -1,4 +1,4 @@
-package helpdesk;
+package ru.example.helpdesk.model;
 public class SupportAgent extends User {
     public SupportAgent(long id, String name, String email) {
         super(id, name, email);
