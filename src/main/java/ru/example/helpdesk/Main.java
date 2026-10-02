@@ -1,40 +1,33 @@
 package ru.example.helpdesk;
 
-import ru.example.helpdesk.model.Ticket;
-import ru.example.helpdesk.model.TicketPriority;
-import ru.example.helpdesk.repository.TicketRepository;
-import ru.example.helpdesk.repository.jdbc.JdbcTicketRepository;
-import ru.example.helpdesk.service.TicketService;
+import ru.example.helpdesk.model.TicketComment;
+import ru.example.helpdesk.repository.CommentRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcCommentRepository;
 
 public class Main {
 
     public static void main(String[] args) {
 
-        TicketRepository ticketRepository =
-                new JdbcTicketRepository();
+        CommentRepository commentRepository =
+                new JdbcCommentRepository();
 
-        TicketService ticketService =
-                new TicketService(ticketRepository);
-
-        Ticket ticket = ticketService.createTicket(
-                "Проверка назначения",
-                "Проверка назначения сотрудника",
-                TicketPriority.HIGH,
-                1L,
-                1L
+        TicketComment comment = new TicketComment(
+                7L,
+                2L,
+                "Проверка комментария",
+                false
         );
 
-        System.out.println("Создана заявка:");
-        System.out.println(ticket);
+        commentRepository.add(comment);
 
-        ticketService.assignTicket(
-                ticket.getId(),
-                2L
-        );
+        System.out.println("Добавлен комментарий:");
+        System.out.println(comment);
 
-        System.out.println("После назначения:");
-        System.out.println(
-                ticketRepository.findById(ticket.getId()).orElseThrow()
-        );
+        System.out.println("Комментарии заявки:");
+
+        for (TicketComment item :
+                commentRepository.findByTicketId(7L)) {
+            System.out.println(item);
+        }
     }
 }
