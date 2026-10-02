@@ -1,38 +1,33 @@
 package ru.example.helpdesk;
 
-import ru.example.helpdesk.model.Ticket;
-import ru.example.helpdesk.model.TicketPriority;
-import ru.example.helpdesk.repository.TicketRepository;
-import ru.example.helpdesk.repository.jdbc.JdbcTicketRepository;
-import ru.example.helpdesk.service.TicketService;
+import ru.example.helpdesk.model.Customer;
+import ru.example.helpdesk.model.User;
+import ru.example.helpdesk.model.UserRole;
+import ru.example.helpdesk.repository.UserRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcUserRepository;
 
 public class Main {
 
     public static void main(String[] args) {
 
-        System.out.println("=== HELP DESK ===");
+        System.out.println("=== СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===");
 
-        TicketRepository ticketRepository =
-                new JdbcTicketRepository();
+        UserRepository userRepository =
+                new JdbcUserRepository();
 
-        TicketService ticketService =
-                new TicketService(ticketRepository);
-
-        Ticket ticket = ticketService.createTicket(
-                "Не работает Wi-Fi",
-                "Ноутбук подключается к сети, но Интернет недоступен",
-                TicketPriority.HIGH,
-                1L,
-                1L
+        User user = new Customer(
+                0,
+                "Анна Петрова",
+                "anna.test2@example.org",
+                UserRole.CUSTOMER,
+                null
         );
 
-        System.out.println("Создана заявка:");
-        System.out.println(ticket);
+        User savedUser = userRepository.save(user);
 
-        System.out.println("Все заявки:");
-
-        for (Ticket t : ticketRepository.findAll()) {
-            System.out.println(t);
-        }
+        System.out.println("Пользователь создан:");
+        System.out.println(savedUser.getName());
+        System.out.println(savedUser.getEmail());
+        System.out.println(savedUser.getRole());
     }
 }

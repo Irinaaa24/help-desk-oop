@@ -17,10 +17,11 @@ public class JdbcTicketRepository implements TicketRepository {
 
         String sql = """
                 INSERT INTO tickets
-                (title, description, status, priority, customer_id, category_id)
-                VALUES (?, ?, ?::ticket_status, ?::ticket_priority, ?, ?)
+                (title, description, status, priority,
+                customer_id, assignee_id, category_id)
+                VALUES (?, ?, ?::ticket_status, ?::ticket_priority, ?, ?, ?)
                 RETURNING id, created_at, updated_at
-                """;
+        """;
 
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -30,7 +31,18 @@ public class JdbcTicketRepository implements TicketRepository {
             statement.setString(3, ticket.getStatus().name());
             statement.setString(4, ticket.getPriority().name());
             statement.setLong(5, ticket.getCustomerId());
-            statement.setLong(6, ticket.getCategoryId());
+
+            if (ticket.getAssigneeId() == null) {
+                statement.setNull(6, Types.BIGINT);
+            } else {
+                statement.setLong(6, ticket.getAssigneeId());
+            }
+
+            if (ticket.getCategoryId() == null) {
+                statement.setNull(7, Types.BIGINT);
+            } else {
+                statement.setLong(7, ticket.getCategoryId());
+            }
 
             try (ResultSet resultSet = statement.executeQuery()) {
 
@@ -205,19 +217,16 @@ public class JdbcTicketRepository implements TicketRepository {
         ticket.setId(resultSet.getLong("id"));
         ticket.setTitle(resultSet.getString("title"));
         ticket.setDescription(resultSet.getString("description"));
-
         ticket.setStatus(
                 TicketStatus.valueOf(
                         resultSet.getString("status")
                 )
         );
-
         ticket.setPriority(
                 TicketPriority.valueOf(
                         resultSet.getString("priority")
                 )
         );
-
         ticket.setCustomerId(
                 resultSet.getLong("customer_id")
         );
@@ -226,39 +235,31 @@ public class JdbcTicketRepository implements TicketRepository {
         ticket.setAssigneeId(
                 resultSet.wasNull() ? null : assigneeId
         );
-
         long categoryId = resultSet.getLong("category_id");
         ticket.setCategoryId(
                 resultSet.wasNull() ? null : categoryId
         );
-
         Timestamp createdAt =
                 resultSet.getTimestamp("created_at");
-
         if (createdAt != null) {
             ticket.setCreatedAt(
                     createdAt.toLocalDateTime()
             );
         }
-
         Timestamp updatedAt =
                 resultSet.getTimestamp("updated_at");
-
         if (updatedAt != null) {
             ticket.setUpdatedAt(
                     updatedAt.toLocalDateTime()
             );
         }
-
         Timestamp closedAt =
                 resultSet.getTimestamp("closed_at");
-
         if (closedAt != null) {
             ticket.setClosedAt(
                     closedAt.toLocalDateTime()
             );
         }
-
         return ticket;
     }
 }
