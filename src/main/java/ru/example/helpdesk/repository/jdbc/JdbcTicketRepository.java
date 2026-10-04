@@ -2,10 +2,16 @@ package ru.example.helpdesk.repository.jdbc;
 
 import ru.example.helpdesk.config.DatabaseConfig;
 import ru.example.helpdesk.model.Ticket;
+import ru.example.helpdesk.model.TicketDetails;
 import ru.example.helpdesk.model.TicketPriority;
 import ru.example.helpdesk.model.TicketStatus;
 import ru.example.helpdesk.repository.TicketRepository;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -14,14 +20,13 @@ public class JdbcTicketRepository implements TicketRepository {
 
     @Override
     public Ticket save(Ticket ticket) {
-
         String sql = """
                 INSERT INTO tickets
                 (title, description, status, priority,
                 customer_id, assignee_id, category_id)
                 VALUES (?, ?, ?::ticket_status, ?::ticket_priority, ?, ?, ?)
                 RETURNING id, created_at, updated_at
-        """;
+                """;
 
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -45,7 +50,6 @@ public class JdbcTicketRepository implements TicketRepository {
             }
 
             try (ResultSet resultSet = statement.executeQuery()) {
-
                 if (resultSet.next()) {
                     ticket.setId(resultSet.getLong("id"));
                     ticket.setCreatedAt(
@@ -56,7 +60,6 @@ public class JdbcTicketRepository implements TicketRepository {
                             resultSet.getTimestamp("updated_at")
                                     .toLocalDateTime()
                     );
-
                     return ticket;
                 }
 
@@ -64,15 +67,12 @@ public class JdbcTicketRepository implements TicketRepository {
             }
 
         } catch (SQLException e) {
-            throw new RuntimeException(
-                    "Ошибка сохранения заявки", e
-            );
+            throw new RuntimeException("Ошибка сохранения заявки", e);
         }
     }
 
     @Override
     public Optional<Ticket> findById(long id) {
-
         String sql = "SELECT * FROM tickets WHERE id = ?";
 
         try (Connection connection = DatabaseConfig.getConnection();
@@ -81,7 +81,6 @@ public class JdbcTicketRepository implements TicketRepository {
             statement.setLong(1, id);
 
             try (ResultSet resultSet = statement.executeQuery()) {
-
                 if (resultSet.next()) {
                     return Optional.of(mapTicket(resultSet));
                 }
@@ -90,15 +89,12 @@ public class JdbcTicketRepository implements TicketRepository {
             }
 
         } catch (SQLException e) {
-            throw new RuntimeException(
-                    "Ошибка поиска заявки", e
-            );
+            throw new RuntimeException("Ошибка поиска заявки", e);
         }
     }
 
     @Override
     public List<Ticket> findAll() {
-
         String sql = "SELECT * FROM tickets ORDER BY id";
 
         List<Ticket> tickets = new ArrayList<>();
@@ -114,17 +110,13 @@ public class JdbcTicketRepository implements TicketRepository {
             return tickets;
 
         } catch (SQLException e) {
-            throw new RuntimeException(
-                    "Ошибка получения заявок", e
-            );
+            throw new RuntimeException("Ошибка получения заявок", e);
         }
     }
 
     @Override
     public List<Ticket> findByStatus(TicketStatus status) {
-
-        String sql =
-                "SELECT * FROM tickets WHERE status = ?::ticket_status";
+        String sql = "SELECT * FROM tickets WHERE status = ?::ticket_status";
 
         List<Ticket> tickets = new ArrayList<>();
 
@@ -134,7 +126,6 @@ public class JdbcTicketRepository implements TicketRepository {
             statement.setString(1, status.name());
 
             try (ResultSet resultSet = statement.executeQuery()) {
-
                 while (resultSet.next()) {
                     tickets.add(mapTicket(resultSet));
                 }
@@ -144,14 +135,68 @@ public class JdbcTicketRepository implements TicketRepository {
 
         } catch (SQLException e) {
             throw new RuntimeException(
-                    "Ошибка поиска заявок по статусу", e
+                    "Ошибка поиска заявок по статусу",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public List<TicketDetails> findAllWithDetails() {
+        String sql = """
+                SELECT
+                    t.id,
+                    t.title,
+                    t.status,
+                    t.priority,
+                    c.name AS category_name,
+                    customer.name AS customer_name,
+                    assignee.name AS assignee_name,
+                    t.created_at
+                FROM tickets t
+                JOIN users customer ON customer.id = t.customer_id
+                LEFT JOIN users assignee ON assignee.id = t.assignee_id
+                LEFT JOIN categories c ON c.id = t.category_id
+                ORDER BY t.created_at DESC
+                """;
+
+        List<TicketDetails> tickets = new ArrayList<>();
+
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement =
+                     connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                Timestamp createdAt =
+                        resultSet.getTimestamp("created_at");
+
+                tickets.add(
+                        new TicketDetails(
+                                resultSet.getLong("id"),
+                                resultSet.getString("title"),
+                                resultSet.getString("status"),
+                                resultSet.getString("priority"),
+                                resultSet.getString("category_name"),
+                                resultSet.getString("customer_name"),
+                                resultSet.getString("assignee_name"),
+                                createdAt.toLocalDateTime()
+                        )
+                );
+            }
+
+            return tickets;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(
+                    "Ошибка получения заявок с деталями",
+                    e
             );
         }
     }
 
     @Override
     public void update(Ticket ticket) {
-
         String sql = """
                 UPDATE tickets
                 SET title = ?,
@@ -184,15 +229,12 @@ public class JdbcTicketRepository implements TicketRepository {
             statement.executeUpdate();
 
         } catch (SQLException e) {
-            throw new RuntimeException(
-                    "Ошибка обновления заявки", e
-            );
+            throw new RuntimeException("Ошибка обновления заявки", e);
         }
     }
 
     @Override
     public boolean deleteById(long id) {
-
         String sql = "DELETE FROM tickets WHERE id = ?";
 
         try (Connection connection = DatabaseConfig.getConnection();
@@ -203,63 +245,49 @@ public class JdbcTicketRepository implements TicketRepository {
             return statement.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            throw new RuntimeException(
-                    "Ошибка удаления заявки", e
-            );
+            throw new RuntimeException("Ошибка удаления заявки", e);
         }
     }
 
-    private Ticket mapTicket(ResultSet resultSet)
-            throws SQLException {
-
+    private Ticket mapTicket(ResultSet resultSet) throws SQLException {
         Ticket ticket = new Ticket();
 
         ticket.setId(resultSet.getLong("id"));
         ticket.setTitle(resultSet.getString("title"));
         ticket.setDescription(resultSet.getString("description"));
         ticket.setStatus(
-                TicketStatus.valueOf(
-                        resultSet.getString("status")
-                )
+                TicketStatus.valueOf(resultSet.getString("status"))
         );
         ticket.setPriority(
-                TicketPriority.valueOf(
-                        resultSet.getString("priority")
-                )
+                TicketPriority.valueOf(resultSet.getString("priority"))
         );
-        ticket.setCustomerId(
-                resultSet.getLong("customer_id")
-        );
+        ticket.setCustomerId(resultSet.getLong("customer_id"));
 
         long assigneeId = resultSet.getLong("assignee_id");
         ticket.setAssigneeId(
                 resultSet.wasNull() ? null : assigneeId
         );
+
         long categoryId = resultSet.getLong("category_id");
         ticket.setCategoryId(
                 resultSet.wasNull() ? null : categoryId
         );
-        Timestamp createdAt =
-                resultSet.getTimestamp("created_at");
+
+        Timestamp createdAt = resultSet.getTimestamp("created_at");
         if (createdAt != null) {
-            ticket.setCreatedAt(
-                    createdAt.toLocalDateTime()
-            );
+            ticket.setCreatedAt(createdAt.toLocalDateTime());
         }
-        Timestamp updatedAt =
-                resultSet.getTimestamp("updated_at");
+
+        Timestamp updatedAt = resultSet.getTimestamp("updated_at");
         if (updatedAt != null) {
-            ticket.setUpdatedAt(
-                    updatedAt.toLocalDateTime()
-            );
+            ticket.setUpdatedAt(updatedAt.toLocalDateTime());
         }
-        Timestamp closedAt =
-                resultSet.getTimestamp("closed_at");
+
+        Timestamp closedAt = resultSet.getTimestamp("closed_at");
         if (closedAt != null) {
-            ticket.setClosedAt(
-                    closedAt.toLocalDateTime()
-            );
+            ticket.setClosedAt(closedAt.toLocalDateTime());
         }
+
         return ticket;
     }
 }
