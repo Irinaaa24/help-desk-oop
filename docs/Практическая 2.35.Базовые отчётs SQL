@@ -1,0 +1,20 @@
+SELECT status, COUNT(*) AS count
+FROM tickets
+GROUP BY status
+ORDER BY status;
+
+SELECT c.name, COUNT(t.id) AS ticket_count
+FROM categories c
+LEFT JOIN tickets t ON t.category_id = c.id
+GROUP BY c.id, c.name
+ORDER BY ticket_count DESC;
+
+SELECT u.name,
+       COUNT(t.id) FILTER (
+           WHERE t.status IN ('NEW', 'IN_PROGRESS')
+       ) AS active_tickets
+FROM users u
+LEFT JOIN tickets t ON t.assignee_id = u.id
+WHERE u.role = 'SUPPORT_AGENT'
+GROUP BY u.id, u.name
+ORDER BY active_tickets DESC;
